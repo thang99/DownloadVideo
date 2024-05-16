@@ -1,61 +1,74 @@
+import requests
 import tkinter as tk
-from pytube import YouTube
+from PIL import Image, ImageTk
 
-def search_videos():
-    keyword = keyword_entry.get()
-    keyword = keyword.replace(" ", "+")  # Replace spaces with '+' in the search query
-    try:
-        global search_results 
-        search_results = YouTube(f"{keyword}").search()
-        update_video_list(search_results)
-    except Exception as e:
-        video_listbox.delete(0, tk.END)
-        video_listbox.insert(tk.END, "Error: " + str(e))
+api_key = "AIzaSyAaNFrAdAI36Y0nTCtrRaeJr5nLus-Gx08"
 
-def update_video_list(videos):
-    video_listbox.delete(0, tk.END)
-    for idx, video in enumerate(videos):
-        video_listbox.insert(tk.END, f"{idx+1}. {video.title}")
+def search_youtube_videos(query, api_key, max_results=5):
+    base_url = "https://www.googleapis.com/youtube/v3/search"
+    params = {
+        "part": "snippet",
+        "q": query,
+        "maxResults": max_results,
+        "key": api_key
+    }
 
-def select_video(event):
-    selected_index = video_listbox.curselection()
-    if selected_index:
-        selected_video = search_results[selected_index[0]]
-        download_video(selected_video)
+    response = requests.get(base_url, params=params)
+    data = response.json()
 
-def download_video(video):
-    try:
-        yt = YouTube(video.url)
-        stream = yt.streams.get_highest_resolution()
-        stream.download(output_path="./")
-        status_label.config(text="Download completed!")
-    except Exception as e:
-        status_label.config(text=f"Error: {e}")
+    videos = []
+    for item in data["items"]:
+        video_id = item["id"]["videoId"]
+        title = item["snippet"]["title"]
+        channel = item["snippet"]["channelTitle"]
+        thumbnail = item["snippet"]["thumbnails"]["default"]["url"]
+        videos.append({"title": title, "channel": channel, "thumbnail": thumbnail, "video_id": video_id})
 
-# Create main window
+    return videos
+
+def show_results():
+    query = entry.get()
+    videos = search_youtube_videos(query, api_key)
+
+    # Xóa kết quả cũ nếu có
+    for widget in result_frame.winfo_children():
+        widget.destroy()
+
+    # Hiển thị kết quả mới
+    for video in videos:
+        title_label = tk.Label(result_frame, text="Tiêu đề: " + video["title"])
+        title_label.pack()
+
+        channel_label = tk.Label(result_frame, text="Kênh: " + video["channel"])
+        channel_label.pack()
+
+        image = Image.open(requests.get(video["thumbnail"], stream=True).raw)
+        thumbnail = ImageTk.PhotoImage(image)
+        thumbnail_label = tk.Label(result_frame, image=thumbnail)
+        thumbnail_label.image = thumbnail
+        thumbnail_label.pack()
+
+        video_id_label = tk.Label(result_frame, text="Video ID: " + video["video_id"])
+        video_id_label.pack()
+
+        separator = tk.Label(result_frame, text="-------------------------------------------------")
+        separator.pack()
+
+# Tạo cửa sổ chính
 root = tk.Tk()
-root.title("YouTube Video Search")
+root.title("Tìm kiếm video trên YouTube")
 
-# Create search entry
-keyword_label = tk.Label(root, text="Enter search keyword:")
-keyword_label.pack(padx=10, pady=5)
+# Thêm hộp nhập từ khóa tìm kiếm
+entry = tk.Entry(root, width=50)
+entry.pack(pady=10)
 
-keyword_entry = tk.Entry(root, width=50)
-keyword_entry.pack(padx=10, pady=5)
+# Thêm nút tìm kiếm
+search_button = tk.Button(root, text="Tìm kiếm", command=show_results)
+search_button.pack()
 
-# Create search button
-search_button = tk.Button(root, text="Search", command=search_videos)
-search_button.pack(padx=10, pady=5)
+# Tạo khung để hiển thị kết quả
+result_frame = tk.Frame(root)
+result_frame.pack(pady=10)
 
-# Create video listbox
-video_listbox = tk.Listbox(root, height=15, width=100)
-video_listbox.pack(padx=10, pady=5)
-
-# Bind select event to video listbox
-video_listbox.bind('<<ListboxSelect>>', select_video)
-
-# Create status label
-status_label = tk.Label(root, text="")
-status_label.pack(padx=10, pady=5)
-
+# Chạy ứng dụng
 root.mainloop()
