@@ -5,8 +5,6 @@ from googleapiclient.discovery import build
 import os
 from moviepy.editor import VideoFileClip
 from tkinter import filedialog
-from PIL import Image, ImageTk  # Thư viện PIL để xử lý hình ảnh
-from io import BytesIO
 
 API_KEY = "AIzaSyAaNFrAdAI36Y0nTCtrRaeJr5nLus-Gx08"
 
